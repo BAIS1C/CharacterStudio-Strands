@@ -11,14 +11,14 @@
 }
 
 .iconButtonWrap .buttonBackground .buttonBackgroundColor {
-    fill: #EAF4EF;
+    fill: #E0F0FF;
 }
 .iconButtonWrap .buttonBackground .innerBackgroundColor {
-    fill: #EAF4EF;
+    fill: #E0F0FF;
 }
 
 .iconButtonWrap.dark .buttonBackground .buttonBackgroundColor {
-    fill: #EAF4EF;
+    fill: #E0F0FF;
 }
 
 .iconButtonWrap.dark .buttonBackground .innerBackgroundColor {
@@ -56,20 +56,20 @@
 }
 
 .iconButtonWrap:hover .buttonBackgroundColor {
-    fill: #FFC000 !important;
+    fill: #F000B8 !important;
     stroke: #000000 !important;
 }
 
 .iconButtonWrap:hover .innerBackgroundColor {
-    fill: #FFC000 !important;
+    fill: #F000B8 !important;
 }
 
 .iconButtonWrap:hover .icon * {
-    fill: #EAF4EF !important;
+    fill: #E0F0FF !important;
 }
 
 .iconButtonWrap:active .buttonBackgroundColor {
-    fill: #fdc503 !important;
+    fill: #F000B8 !important;
 }
 
 .iconButtonWrap:active .innerBackgroundColor {
@@ -77,7 +77,7 @@
 }
 
 .iconButtonWrap:active .icon * {
-    fill: #fdc503;
+    fill: #F000B8;
 }
 
 .iconButtonWrap.active .buttonBackgroundColor {
@@ -89,7 +89,7 @@
 }
 
 .iconButtonWrap.active .icon * {
-    fill: #fdc503;
+    fill: #F000B8;
 }
 
 .buttonWrap {
@@ -126,7 +126,7 @@
 
 .buttonWrap .innerWrap {
     border: 1px solid #FFFFFF;
-    font-family: "TTSC-Bold";
+    font-family: "Orbitron", monospace;
     font-weight: 800;
     background: #FFFFFF;
     color: #000000;
@@ -140,7 +140,7 @@
 
 .buttonWrap.dark .innerWrap {
     border: 1px solid #FFFFFF;
-    font-family: "TTSC-Bold";
+    font-family: "Orbitron", monospace;
     background: #000000;
     color: #FFFFFF;
     text-transform: uppercase !important;
@@ -148,9 +148,9 @@
 }
 
 .buttonWrap:hover:enabled .innerWrap {
-    border: 1px solid #FFC000;
-    font-family: "TTSC-Bold";
-    background: #FFC000;
+    border: 1px solid #F000B8;
+    font-family: "Orbitron", monospace;
+    background: #F000B8;
     color: #EFEFEF;
 }
 
@@ -159,12 +159,12 @@
 }
 
 .buttonWrap:active:enabled .innerWrap {
-    border: 1px solid #FFC000;
-    font-family: "TTSC-Bold";
+    border: 1px solid #F000B8;
+    font-family: "Orbitron", monospace;
     background: #000000;
-    color: #FFC000;
+    color: #F000B8;
 }
 
 .buttonWrap:active:enabled .innerWrap * {
-    fill: #FFC000 !important;
+    fill: #F000B8 !important;
 }

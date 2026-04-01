@@ -1,561 +1,315 @@
-import React, { useContext } from "react"
+import React, { useContext, useMemo } from "react"
 import styles from "./Appearance.module.css"
 import { ViewMode, ViewContext } from "../context/ViewContext"
 import { SceneContext } from "../context/SceneContext"
-import CustomButton from "../components/custom-button"
 import { LanguageContext } from "../context/LanguageContext"
 import { SoundContext } from "../context/SoundContext"
 import { AudioContext } from "../context/AudioContext"
 import FileDropComponent from "../components/FileDropComponent"
-import { getFileNameWithoutExtension } from "../library/utils"
-import MenuTitle from "../components/MenuTitle"
-import BottomDisplayMenu from "../components/BottomDisplayMenu"
-import decalPicker from "../images/sticker.png"
 import { TokenBox } from "../components/token-box/TokenBox"
-import JsonAttributes from "../components/JsonAttributes"
-import cancel from "../images/cancel.png"
-import DecalGridView from "../components/decals/decalGrid"
 import randomizeIcon from "../images/randomize.png"
-import colorPicker from "../images/color-palette.png"
-import { ChromePicker   } from 'react-color'
-import RightPanel from "../components/RightPanel"
-import SaleIcon from "../images/sale-icon.png"
+import cancel from "../images/cancel.png"
+import { getFileNameWithoutExtension } from "../library/utils"
 
-  /**
-   * @typedef {import("../library/CharacterManifestData.js").TraitModelsGroup} TraitModelsGroup
-   * @typedef {import("../library/CharacterManifestData.js").ModelTrait} ModelTrait
-  */
+/**
+ * Tab definitions — maps trait groups to CHASSIS or IDENTITY
+ * CHASSIS = physical form (body, torso, legs, feet, outer layers)
+ * IDENTITY = face & personality (head, eyes, accessories)
+ */
+const TAB_CHASSIS = "CHASSIS"
+const TAB_IDENTITY = "IDENTITY"
 
-export const TraitPage ={
-  TRAIT:0,
-  BLEND_SHAPE:1,
-  DECAL:2
-}
+const CHASSIS_TRAITS = new Set(["body", "chest", "legs", "feet", "outer"])
+const IDENTITY_TRAITS = new Set(["head", "eyes", "accessories"])
 
 function Appearance() {
-  const { isLoading, setViewMode, setIsLoading } = React.useContext(ViewContext)
+  const { isLoading, setViewMode, setIsLoading } = useContext(ViewContext)
   const {
     toggleDebugMode,
     characterManager,
     animationManager,
     moveCamera,
-  } = React.useContext(SceneContext)
-  
-  const [traitView, setTraitView] = React.useState(TraitPage.TRAIT)
+  } = useContext(SceneContext)
 
-  const { playSound } = React.useContext(SoundContext)
-  const { isMute } = React.useContext(AudioContext)
+  const { playSound } = useContext(SoundContext)
+  const { isMute } = useContext(AudioContext)
   const { t } = useContext(LanguageContext)
-  
 
+  const [activeTab, setActiveTab] = React.useState(TAB_CHASSIS)
+  const [selectedTraitGroup, setSelectedTraitGroup] = React.useState(null)
+  const [selectedTrait, setSelectedTrait] = React.useState(null)
+  const [traits, setTraits] = React.useState(null)
+
+  // Group all trait groups by tab
+  const allGroups = characterManager.getGroupTraits()
+  const groupsByTab = useMemo(() => {
+    const chassis = []
+    const identity = []
+    allGroups.forEach((group) => {
+      const traitName = group.trait.toLowerCase()
+      if (IDENTITY_TRAITS.has(traitName)) {
+        identity.push(group)
+      } else {
+        // Default to chassis for any unmapped traits
+        chassis.push(group)
+      }
+    })
+    return { [TAB_CHASSIS]: chassis, [TAB_IDENTITY]: identity }
+  }, [allGroups])
+
+  const visibleGroups = groupsByTab[activeTab] || []
+
+  // ---- Actions ----
   const back = () => {
-    !isMute && playSound('backNextButton');
-    characterManager.removeCurrentCharacter();
-    characterManager.removeCurrentManifest();
+    !isMute && playSound('backNextButton')
+    characterManager.removeCurrentCharacter()
+    characterManager.removeCurrentManifest()
     setViewMode(ViewMode.CREATE)
-    toggleDebugMode(false);
+    toggleDebugMode(false)
   }
 
-  const [jsonSelectionArray, setJsonSelectionArray] = React.useState(null)
-  const [traits, setTraits] = React.useState(null)
-  /**
-  * @type {[TraitModelsGroup, React.Dispatch<TraitModelsGroup>]} state
-  */
-  const [selectedTraitGroup, setSelectedTraitGroup] = React.useState(null)
-  /**
-   * @type {[ModelTrait|null, React.Dispatch<ModelTrait|null>]} state
-   */
-  const [selectedTrait, setSelectedTrait] = React.useState(null)
-  const [selectedBlendshapeTraits, setSelectedBlendshapeTraits] = React.useState({})
-  const [selectedVRM, setSelectedVRM] = React.useState(null)
-  const [loadedAnimationName, setLoadedAnimationName] = React.useState("");
-  const [isPickingColor, setIsPickingColor] = React.useState(false)
-  const [colorPicked, setColorPicked] = React.useState({ background: '#ffffff' })
-
   const next = () => {
-    !isMute && playSound('backNextButton');
-    setViewMode(ViewMode.SAVE);
-    toggleDebugMode(false);
+    !isMute && playSound('backNextButton')
+    setViewMode(ViewMode.SAVE)
+    toggleDebugMode(false)
   }
 
   const randomize = () => {
-    setIsLoading(true);
-    setJsonSelectionArray(null);
+    setIsLoading(true)
     characterManager.loadRandomTraits().then(() => {
-      if (selectedTraitGroup && selectedTraitGroup.trait != ""){
-        setSelectedTrait(characterManager.getCurrentTraitData(selectedTraitGroup.trait));
+      if (selectedTraitGroup && selectedTraitGroup.trait !== "") {
+        setSelectedTrait(characterManager.getCurrentTraitData(selectedTraitGroup.trait))
       }
-      setIsLoading(false);
-    })
-    .catch((error) => {
-      setIsLoading(false);
-      console.error("Error loading random traits:", error.message);
-    });
-  }
-
-  const handleColorChange = (color) => {
-    setColorPicked({ background: color.hex });
-  }
-  const handleChangeComplete = (color) =>{
-    setColorPicked({ background: color.hex });
-    characterManager.setTraitColor(selectedTraitGroup?.trait, color.hex);
-  } 
-
-  const handleAnimationDrop = async (file) => {
-    const animName = getFileNameWithoutExtension(file.name);
-    const path = URL.createObjectURL(file);
-    await animationManager.loadAnimation(path,false,0, true, "", animName);
-    setLoadedAnimationName(animationManager.getCurrentAnimationName());
-  }
-
-  const handleImageDrop = (file) => {
-    setIsPickingColor(false);
-    if (selectedTraitGroup && selectedTraitGroup.trait != ""){
-      setIsLoading(true);
-      const path = URL.createObjectURL(file);
-      characterManager.loadCustomTexture(selectedTraitGroup.trait, path).then(()=>{
-        setIsLoading(false);
-      })
-    }
-    else{
-      console.warn("Please select a group trait first.")
-    }
-  }
-  const handleVRMDrop = (file) =>{
-    setIsPickingColor(false);
-    if (selectedTraitGroup && selectedTraitGroup.trait != ""){
-      setIsLoading(true);
-      const path = URL.createObjectURL(file);
-      characterManager.loadCustomTrait(selectedTraitGroup.trait, path).then(()=>{
-        setIsLoading(false);
-      })
-    }
-    else{
-      console.warn("Please select a group trait first.")
-    }
-  }
-  const selectTrait = (trait) => {
-    console.log(trait);
-    if(trait.id === selectedTrait?.id && trait.collectionID === selectedTrait?.collectionID){
-      if(trait.blendshapeTraits?.length>0){
-        setTraitView(TraitPage.BLEND_SHAPE);
-      }
-      // We already selected this trait, do nothing
-      return
-    }
-
-    setIsPickingColor(false);
-    setIsLoading(true);
-    characterManager.loadTrait(trait.traitGroup.trait, trait.id, trait.collectionID).then(()=>{
-      setIsLoading(false);
-      console.log(characterManager.getCurrentTotalPrice());
-      if(trait.blendshapeTraits?.length>0){
-        const selectedBlendshapeTrait = characterManager.getCurrentBlendShapeTraitData(trait.traitGroup.trait);
-        setSelectedBlendshapeTraits(Object.entries(selectedBlendshapeTrait).reduce((acc,[key,value])=>{acc[key]=value.id;return acc},{}))
-        setTraitView(TraitPage.BLEND_SHAPE);
-      }
-      setSelectedTrait(trait);
+      setIsLoading(false)
+    }).catch((error) => {
+      setIsLoading(false)
+      console.error("Error loading random traits:", error.message)
     })
   }
-  const removeTrait = (traitGroupName) =>{
-    setIsPickingColor(false);
-    characterManager.removeTrait(traitGroupName);
-    setSelectedTrait(null);
-  }
-  const randomTrait = (traitGroupName) =>{
-    setIsPickingColor(false);
-    setIsLoading(true);
-    characterManager.loadRandomTrait(traitGroupName).then(()=>{
-      setIsLoading(false);
-      setSelectedTrait(characterManager.getCurrentTraitData(traitGroupName));
-    })
-    // set selected trait
-  }
-  const handleJsonDrop = (files) => {
-    setIsPickingColor(false);
-    const filesArray = Array.from(files);
-    const jsonDataArray = [];
-    const processFile = (file) => {
-      return new Promise((resolve, reject) => {
-        if (file && file.name.toLowerCase().endsWith('.json')) {
-          const reader = new FileReader();
-
-          // XXX Anata hack to display nft thumbs
-          const thumbLocation = `${characterManager.manifestData?.getAssetsDirectory()}/anata/_thumbnails/t_${file.name.split('_')[0]}.jpg`;
-
-          console.log(thumbLocation)
-          reader.onload = function (e) {
-            try {
-              const jsonContent = JSON.parse(e.target.result);
-              // XXX Anata hack to display nft thumbs
-              jsonContent.thumb = thumbLocation;
-              jsonDataArray.push(jsonContent);
-
-              resolve(); // Resolve the promise when processing is complete
-            } catch (error) {
-              console.error("Error parsing the JSON file:", error);
-              reject(error);
-            }
-          };
-          reader.readAsText(file);
-        }
-      });
-    };
-
-    // Use Promise.all to wait for all promises to resolve
-    Promise.all(filesArray.map(processFile))
-    .then(() => {
-      if (jsonDataArray.length > 0){
-        // This code will run after all files are processed
-        setJsonSelectionArray(jsonDataArray);
-        setIsLoading(true);
-        characterManager.loadTraitsFromNFTObject(jsonDataArray[0]).then(()=>{
-          setIsLoading(false);
-        })
-      }
-    })
-    .catch((error) => {
-      console.error("Error processing files:", error);
-    });
-  }
-
-  const handleFilesDrop = async(files) => {
-    const file = files[0];
-    // Check if the file has the .fbx extension
-    if (file && file.name.toLowerCase().endsWith('.fbx')) {
-      handleAnimationDrop(file);
-    } 
-    if (file && (file.name.toLowerCase().endsWith('.png') || file.name.toLowerCase().endsWith('.jpg'))) {
-      handleImageDrop(file);
-    } 
-    if (file && file.name.toLowerCase().endsWith('.vrm')) {
-      handleVRMDrop(file);
-    } 
-    if (file && file.name.toLowerCase().endsWith('.json')) {
-      handleJsonDrop(files);
-    } 
-  };
 
   const selectTraitGroup = (traitGroup) => {
-    !isMute && playSound('optionClick');
-    setIsPickingColor(false);
-    if (selectedTraitGroup?.trait !== traitGroup.trait){
-      setTraitView(TraitPage.TRAIT);
-      setTraits(characterManager.getTraits(traitGroup.trait));
-
-      setSelectedTraitGroup(traitGroup);
-
+    !isMute && playSound('optionClick')
+    if (selectedTraitGroup?.trait !== traitGroup.trait) {
+      setTraits(characterManager.getTraits(traitGroup.trait))
+      setSelectedTraitGroup(traitGroup)
       const selectedT = characterManager.getCurrentTraitData(traitGroup.trait)
-      const selectedBlendshapeTraits = characterManager.getCurrentBlendShapeTraitData(traitGroup.trait);
-
-      setSelectedTrait(selectedT);
-      setSelectedBlendshapeTraits(Object.entries(selectedBlendshapeTraits).reduce((acc,[key,value])=>{acc[key]=value.id;return acc},{}))
-
-      setSelectedVRM(characterManager.getCurrentTraitVRM(traitGroup.trait))
-      moveCamera({ targetY: traitGroup.cameraTarget.height, distance: traitGroup.cameraTarget.distance})
-    }
-    else{
-      setTraits(null);
+      setSelectedTrait(selectedT)
+      moveCamera({ targetY: traitGroup.cameraTarget.height, distance: traitGroup.cameraTarget.distance })
+    } else {
+      // Deselect
+      setTraits(null)
       setSelectedTraitGroup(null)
-      setSelectedTrait(null);
-      setSelectedBlendshapeTraits({})
+      setSelectedTrait(null)
       moveCamera({ targetY: 0.8, distance: 3.2 })
     }
   }
 
-
-  const uploadTrait = () =>{
-    setIsPickingColor(false);
-    var input = document.createElement('input');
-    input.type = 'file';
-    input.accept=".vrm"
-    if(!selectedTraitGroup){
-      return console.error("Please select a trait group first")
+  const selectTrait = (trait) => {
+    if (trait.id === selectedTrait?.id && trait.collectionID === selectedTrait?.collectionID) {
+      return
     }
-    input.onchange = e => { 
-      var file = e.target.files[0]; 
-      if (file.name.endsWith(".vrm")){
-        const url = URL.createObjectURL(file);
-        setIsLoading(true);
-        characterManager.loadCustomTrait(selectedTraitGroup.trait,url).then(()=>{
-          setIsLoading(false);
+    setIsLoading(true)
+    characterManager.loadTrait(trait.traitGroup.trait, trait.id, trait.collectionID).then(() => {
+      setIsLoading(false)
+      setSelectedTrait(trait)
+    })
+  }
+
+  const removeTrait = (traitGroupName) => {
+    characterManager.removeTrait(traitGroupName)
+    setSelectedTrait(null)
+  }
+
+  const randomTrait = (traitGroupName) => {
+    setIsLoading(true)
+    characterManager.loadRandomTrait(traitGroupName).then(() => {
+      setIsLoading(false)
+      setSelectedTrait(characterManager.getCurrentTraitData(traitGroupName))
+    })
+  }
+
+  const handleFilesDrop = async (files) => {
+    const file = files[0]
+    if (file && file.name.toLowerCase().endsWith('.fbx')) {
+      const animName = getFileNameWithoutExtension(file.name)
+      const path = URL.createObjectURL(file)
+      await animationManager.loadAnimation(path, false, 0, true, "", animName)
+    }
+    if (file && file.name.toLowerCase().endsWith('.vrm')) {
+      if (selectedTraitGroup && selectedTraitGroup.trait !== "") {
+        setIsLoading(true)
+        const path = URL.createObjectURL(file)
+        characterManager.loadCustomTrait(selectedTraitGroup.trait, path).then(() => {
+          setIsLoading(false)
         })
       }
     }
-    input.click();
+  }
+
+  const switchTab = (tab) => {
+    setActiveTab(tab)
+    // Reset selection when switching tabs
+    setTraits(null)
+    setSelectedTraitGroup(null)
+    setSelectedTrait(null)
+    moveCamera({ targetY: 0.8, distance: 3.2 })
+  }
+
+  const getTraitCount = (traitGroup) => {
+    try {
+      const t = characterManager.getTraits(traitGroup.trait)
+      return t ? t.length : 0
+    } catch {
+      return 0
+    }
   }
 
   return (
     <div className={styles.container}>
-      <div className={`loadingIndicator ${isLoading ? "active" : ""}`}>
-        <img className={"rotate"} src="ui/loading.svg" />
-      </div>
-      <div className={"sectionTitle"}>{t("pageTitles.chooseAppearance")}</div>
-      <FileDropComponent 
-         onFilesDrop={handleFilesDrop}
-      />
-      {/* Main Menu section */}
-      <div className={styles["sideMenu"]}>
-        <MenuTitle title="Appearance" left={20}/>
-        <div className={styles["bottomLine"]} />
-        <div className={styles["scrollContainer"]}>
-          <div className={styles["editor-container"]}>
-            {
-              characterManager.getGroupTraits().map((traitGroup, index) => (
-                <div key={"options_" + index} 
-                className={styles["editorButton"]}
-                onClick={() => {
-                  selectTraitGroup(traitGroup)
-                }}>
-                  <TokenBox
-                    size={56}
-                    icon={ traitGroup.fullIconSvg }
-                    rarity={selectedTraitGroup?.trait !== traitGroup.trait ? "none" : "mythic"}
-                    
-                  />
-                  <div className={styles["editorText"]}>{traitGroup.name}</div>
-                </div>
-              ))
-            }
-          </div>
-        </div>
+      {/* Loading Overlay */}
+      <div className={`${styles.loadingOverlay} ${isLoading ? styles.loadingOverlayActive : ""}`}>
+        <img className={styles.loadingSpinner} src="ui/loading.svg" />
       </div>
 
-      {/* Option Selection section */
-      !!traits && selectedTraitGroup && (
-        <div className={styles["selectorContainerPos"]}>
-        
-          <MenuTitle title={selectedTraitGroup.trait} width={130} left={20}/>
+      {/* File Drop (invisible, full screen) */}
+      <FileDropComponent onFilesDrop={handleFilesDrop} />
+
+      {/* ===== RIGHT PANEL ===== */}
+      <div className={styles.rightPanel}>
+
+        {/* Panel Header */}
+        <div className={styles.panelHeader}>
+          <div className={styles.panelTitle}>Customize</div>
+        </div>
+
+        {/* Tab Bar */}
+        <div className={styles.tabBar}>
           <div
-              className={styles["selectorPickerTabs"]}
-              >
-            {/* color section */
-              selectedTrait && traitView==TraitPage.TRAIT && (
-                <div className={styles["selectorColorPickerButton"]}
-                  onClick={()=>{setIsPickingColor(!isPickingColor)}}
-                  >
-                  <img className={styles["selectorColorPickerImg"]} src={colorPicker}/>
-                </div>
-                 )}
-                {selectedTraitGroup && selectedTraitGroup.getAllDecals()?.length && <div className={styles["selectorColorPickerButton"]}
-                  onClick={()=>traitView==TraitPage.DECAL?setTraitView(TraitPage.TRAIT):setTraitView(TraitPage.DECAL)}
-                  >
-                  <img className={styles["selectorColorPickerImg"]} src={decalPicker}/>
-                </div>}
-            </div>
-            {
-          traitView==TraitPage.TRAIT && !!isPickingColor && (<div 
-            draggable = {false}
-            className={styles["selectorColorPickerUI"]}>
-            <ChromePicker 
-              styles={{ default: {picker:{ width: '200px' }} }}
-              color={ colorPicked.background }
-              onChange={ handleColorChange }
-              onChangeComplete={ handleChangeComplete }
-              />
-          </div>)}
-          <div className={styles["bottomLine"]} />
-          <div className={styles["scrollContainerOptions"]}>
-          {traitView == TraitPage.TRAIT && (
-            <div className={styles["selector-container"]}>
-              {
-                <div
-                  key={"randomize-trait"}
-                  className={`${styles["selectorButton"]}`}
-                  onClick={() => {randomTrait(selectedTraitGroup.trait)}}
-                >
-                  <TokenBox
-                    size={56}
-                    icon={randomizeIcon}
-                    rarity={"none"}
-                  />
-                </div>
-              }
-              {/* Null button section */
-                !characterManager.isTraitGroupRequired(selectedTraitGroup.trait) ? (
-                  <div
-                    key={"no-trait"}
-                    className={`${styles["selectorButton"]}`}
-                    icon={cancel}
-                    onClick={() => {removeTrait(selectedTraitGroup.trait)}}
-                  >
-                    <TokenBox
-                      size={56}
-                      icon={cancel}
-                      rarity={selectedTrait == null ? "mythic" : "none"}
-                    />
-                  </div>
-                ) : (
-                  <></>
-                )
-              }
-              {/* All buttons section */
-              traits.map((trait, index) => {
-                let active = (trait.id === selectedTrait?.id && trait.collectionID === selectedTrait?.collectionID)
-                return (
-                  <div
-                    key={index}
-                    className={`${styles["selectorButton"]}`}
-                    onClick={()=>{selectTrait(trait); console.log(trait)}}
-                  >
-                    <TokenBox
-                      size={56}
-                      iconOverlay={(trait.purchasable && trait.locked) ? SaleIcon:null}
-                      icon={trait.fullThumbnail}
-                      rarity={active ? "mythic" : "none"}      
-                    />
-                  </div>
-                )
-              })}
-            </div>)}
-            {traitView == TraitPage.BLEND_SHAPE && (
-              <BlendShapeTraitView selectedTrait={selectedTrait} onBack={()=>{setTraitView(TraitPage.TRAIT)}} selectedBlendShapeTrait={selectedBlendshapeTraits} setSelectedBlendshapeTrait={setSelectedBlendshapeTraits} />
-            )}
-            {traitView == TraitPage.DECAL && (
-              <DecalGridView selectedTraitGroup={selectedTraitGroup} onBack={()=>{setTraitView(TraitPage.TRAIT)}} />
-            )}
+            className={`${styles.tab} ${activeTab === TAB_CHASSIS ? styles.tabActive : ""}`}
+            onClick={() => switchTab(TAB_CHASSIS)}
+          >
+            Chassis
           </div>
-          
-          <div className={styles["uploadContainer"]}>
-            <div 
-              className={styles["uploadButton"]}
-              onClick={uploadTrait}>
-              <div> 
-                Upload </div>
-            </div>
-            
+          <div
+            className={`${styles.tab} ${activeTab === TAB_IDENTITY ? styles.tabActive : ""}`}
+            onClick={() => switchTab(TAB_IDENTITY)}
+          >
+            Identity
           </div>
         </div>
-      )}
-      <JsonAttributes jsonSelectionArray={jsonSelectionArray}/>
-      
-      <RightPanel selectedTrait={selectedTrait} selectedVRM={selectedVRM} traitGroupName={selectedTraitGroup?.trait||""}/>
 
-      <BottomDisplayMenu loadedAnimationName={loadedAnimationName} randomize={randomize}/>
-      <div className={styles.buttonContainer}>
-        <CustomButton
-          theme="light"
-          text={t('callToAction.back')}
-          size={14}
-          className={styles.buttonLeft}
-          onClick={back}
-        />
+        <div className={styles.divider} />
 
-        {
-        characterManager.canDownload() &&
-          <CustomButton
-            theme="light"
-            text={t('callToAction.next')}
-            size={14}
-            className={styles.buttonRight}
-            onClick={next}
-          />
-        }
+        {/* Scrollable Content */}
+        <div className={styles.panelContent}>
+          {/* Category Buttons */}
+          <div className={styles.categoryList}>
+            {visibleGroups.map((traitGroup, index) => {
+              const isActive = selectedTraitGroup?.trait === traitGroup.trait
+              const count = getTraitCount(traitGroup)
 
-        
-        {/* <CustomButton
-          theme="light"
-          text={t('callToAction.randomize')}
-          size={14}
-          className={styles.buttonCenter}
-          onClick={randomize}
-        />
-        <CustomButton
-          theme="light"
-          text={debugMode ? "normal" : "debug"}
-          size={14}
-          className={styles.buttonCenter}
-          onClick={clickDebugMode}
-        /> */}
+              return (
+                <React.Fragment key={"cat_" + index}>
+                  <div
+                    className={`${styles.categoryButton} ${isActive ? styles.categoryButtonActive : ""}`}
+                    onClick={() => selectTraitGroup(traitGroup)}
+                  >
+                    {traitGroup.fullIconSvg && (
+                      <img
+                        className={styles.categoryIcon}
+                        src={traitGroup.fullIconSvg}
+                        alt=""
+                      />
+                    )}
+                    <span className={styles.categoryName}>
+                      {traitGroup.name}
+                    </span>
+                    <span className={styles.categoryCount}>
+                      {count > 0 ? count : ""}
+                    </span>
+                  </div>
+
+                  {/* Trait Grid — renders inline below the active category */}
+                  {isActive && traits && (
+                    <div className={styles.traitSection}>
+                      <div className={styles.traitSectionLabel}>
+                        Select {traitGroup.name}
+                      </div>
+                      <div className={styles.traitGrid}>
+                        {/* Randomize button */}
+                        <div
+                          className={styles.traitSpecialButton}
+                          onClick={() => randomTrait(selectedTraitGroup.trait)}
+                          title="Randomize"
+                        >
+                          <img src={randomizeIcon} alt="Random" />
+                        </div>
+
+                        {/* Remove button (if trait is optional) */}
+                        {!characterManager.isTraitGroupRequired(selectedTraitGroup.trait) && (
+                          <div
+                            className={styles.traitSpecialButton}
+                            onClick={() => removeTrait(selectedTraitGroup.trait)}
+                            title="Remove"
+                          >
+                            <img src={cancel} alt="None" />
+                          </div>
+                        )}
+
+                        {/* Trait options */}
+                        {traits.map((trait, tIndex) => {
+                          const active = (trait.id === selectedTrait?.id && trait.collectionID === selectedTrait?.collectionID)
+                          return (
+                            <div
+                              key={tIndex}
+                              className={`${styles.traitItem} ${active ? styles.traitItemActive : ""}`}
+                              onClick={() => selectTrait(trait)}
+                            >
+                              <TokenBox
+                                size={72}
+                                icon={trait.fullThumbnail}
+                                rarity={active ? "mythic" : "none"}
+                              />
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </React.Fragment>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Bottom Action Bar */}
+        <div className={styles.bottomBar}>
+          <div
+            className={styles.actionButton}
+            onClick={back}
+          >
+            Back
+          </div>
+
+          <div
+            className={styles.randomizeButton}
+            onClick={randomize}
+          >
+            Randomize
+          </div>
+
+          {characterManager.canDownload() && (
+            <div
+              className={`${styles.actionButton} ${styles.actionButtonPrimary}`}
+              onClick={next}
+            >
+              Export
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
 }
 
 export default Appearance
-
-/**
- * @param {{selectedTrait:ModelTrait|null,selectedBlendShapeTrait:Record<string,string>,onBack:()=>void,setSelectedBlendshapeTrait:(x:Record<string,string>)=>void}} param0 
- */
-const BlendShapeTraitView = ({selectedTrait,onBack,selectedBlendShapeTrait,setSelectedBlendshapeTrait})=>{
-  const {characterManager,moveCamera} = React.useContext(SceneContext);
-
-  const groups = characterManager.getBlendShapeGroupTraits(selectedTrait?.traitGroup.trait||"",selectedTrait?.id||"");
-
-  /**
-   *
-   * @param {string} traitGroup
-   * @param {import('../library/CharacterManifestData').BlendShapeGroup} blendShapeGroupTrait 
-    */
-  const removeBlendShapeTrait = (traitGroup,blendShapeGroupTrait)=>{
-    characterManager.removeBlendShapeTrait(traitGroup,blendShapeGroupTrait.trait);
-    const blendShapeTraitCopy = {...selectedBlendShapeTrait};
-    delete blendShapeTraitCopy[blendShapeGroupTrait.trait]
-    setSelectedBlendshapeTrait(blendShapeTraitCopy);
-  }
-  /**
-   * @param {import('../library/CharacterManifestData').BlendShapeTrait} newBlendShape 
-   */
-  const selectBlendShapeTrait = (newBlendShape)=>{
-    const parent = newBlendShape.parentGroup;
-    characterManager.loadBlendShapeTrait(selectedTrait?.traitGroup.trait||"",parent.trait||"",newBlendShape?.id||'');
-    moveCamera({ targetY: parent.cameraTarget.height, distance: parent.cameraTarget.distance})
-    const blendShapeTraitCopy = {...selectedBlendShapeTrait};
-    blendShapeTraitCopy[parent.trait||''] = newBlendShape.id;
-    setSelectedBlendshapeTrait(blendShapeTraitCopy);
-  }
-
-  return (
-    <div className={styles["selector-container-column"]}>
-        <CustomButton
-          theme="dark"
-          text={"Back"}
-          size={14}
-          className={styles.buttonLeft}
-          onClick={onBack}
-        />
-        {groups && groups.length > 0 && groups.map((group)=>{
-          return (
-            <div key={group.trait} className={styles.blendshapeGroup}> 
-              <div>{group.name}</div>
-              <div className={styles["selector-container"]} >
-                <BlendShapeItem key={"empty"}
-                    src={cancel}
-                    active={!selectedBlendShapeTrait[group.trait]}
-                    blendshapeID="cancel"
-                    select={()=>removeBlendShapeTrait(selectedTrait.traitGroup.trait,group)}
-                    />
-                {group.collection.map((blendShapeTrait)=>{
-                  let active = blendShapeTrait.id === selectedBlendShapeTrait[group.trait]
-                  return (
-                    <BlendShapeItem key={blendShapeTrait.id} src={blendShapeTrait.fullThumbnail||''} active={active} blendshapeID={blendShapeTrait.id} select={()=>selectBlendShapeTrait(blendShapeTrait)}/>
-                  )
-                })}
-              </div>
-
-            </div>
-          )
-        })}
-    </div>
-  )
-}
-
-/**
- * @param {{active:boolean,blendshapeID:string,src:string,select:()=>void}} param0 
- */
-const BlendShapeItem = ({active,blendshapeID,src,select})=>{
-
-  return (
-    <div
-      key={blendshapeID}
-      className={`${styles["selectorButton"]}`}
-      onClick={select}
-    >
-      <TokenBox
-        size={56}
-        icon={src||''}
-        rarity={active ? "mythic" : "none"}      
-      />
-    </div>
-  )
-}

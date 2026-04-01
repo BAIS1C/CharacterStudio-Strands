@@ -18,7 +18,7 @@
 .input-box {
   width: 60px; /* Adjust as needed */
   height: 20px;
-  color: #5eb086;
+  color: #00C2FF;
   background-color:rgba(5, 11, 14, 0.5);
   border: none;
   font-size: medium;
@@ -30,7 +30,7 @@
 }
 
 .input-box::selection {
-  background-color: #111f17;
-  color: #5eb086;
+  background-color: #0A1520;
+  color: #00C2FF;
 }
 

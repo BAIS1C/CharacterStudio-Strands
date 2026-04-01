@@ -47,7 +47,7 @@
 .input-box {
   width: 60px; /* Adjust as needed */
   height: 20px;
-  color: #5eb086;
+  color: #00C2FF;
   background-color:rgba(5, 11, 14, 0.5);
   border: none;
   font-size: medium;
@@ -59,8 +59,8 @@
 }
   
 .input-box::selection {
-  background-color: #111f17;
-  color: #5eb086;
+  background-color: #0A1520;
+  color: #00C2FF;
 }
 
 .flexSelect{
@@ -82,11 +82,11 @@
   height: 25px;
   margin: 2px;
   text-align: center;
-  outline-color: #3b434f;
+  outline-color: rgba(0, 194, 255, 0.2);
   outline-width: 2px;
   outline-style: solid;
   align-items: center;
-  background-color: #1e2530;
+  background-color: #0A0B0D;
 }
 .left-button{
   background: url('./ui/backButton_small.png');
@@ -116,13 +116,13 @@
   display: inline-block;
   width: 20px;
   height: 20px;
-  border: 2px solid #284b39; /* Change border color as needed */
+  border: 2px solid #003344; /* Change border color as needed */
   border-radius: 5px;
   cursor: pointer;
 }
 
 .custom-checkbox .checkbox-container.checked {
-  background-color: #5eb086; /* Change background color when checked */
+  background-color: #00C2FF; /* Change background color when checked */
 }
 
 .custom-checkbox .checkbox-container .checkmark {
@@ -131,7 +131,7 @@
 
 /* Style the checkmark when the checkbox is checked */
 .custom-checkbox input[type="checkbox"]:checked + .checkbox-container {
-  background-color: #5eb086; /* Change background color when checked */
+  background-color: #00C2FF; /* Change background color when checked */
 }
 
 .custom-checkbox input[type="checkbox"]:checked + .checkbox-container .checkmark {

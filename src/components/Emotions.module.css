@@ -57,13 +57,13 @@
     display: inline-block;
     width: 20px;
     height: 20px;
-    border: 2px solid #284b39; /* Change border color as needed */
+    border: 2px solid #003344; /* Change border color as needed */
     border-radius: 5px;
     cursor: pointer;
   }
   
   .custom-checkbox .checkbox-container.checked {
-    background-color: #5eb086; /* Change background color when checked */
+    background-color: #00C2FF; /* Change background color when checked */
   }
   
   .custom-checkbox .checkbox-container .checkmark {
@@ -72,7 +72,7 @@
   
   /* Style the checkmark when the checkbox is checked */
   .custom-checkbox input[type="checkbox"]:checked + .checkbox-container {
-    background-color: #5eb086; /* Change background color when checked */
+    background-color: #00C2FF; /* Change background color when checked */
   }
   
   .custom-checkbox input[type="checkbox"]:checked + .checkbox-container .checkmark {
@@ -92,14 +92,14 @@
   .actionButton{
     margin: 10px auto;
     text-align: center;
-    outline-color: #3b434f;
+    outline-color: rgba(0, 194, 255, 0.2);
     color: #d1d7df;
     outline-width: 2px;
     outline-style: solid;
-    background-color: #1e2530;
+    background-color: #0A0B0D;
     height: 30px;
     width: 80%;
-    font-family: "TTSC-Bold";
+    font-family: "Orbitron", monospace;
     text-transform: uppercase !important;
     font-size:x-small;
     display: flex;
